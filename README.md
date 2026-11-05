@@ -12,6 +12,28 @@ We also study **explanation washing** — situations where explanations change e
 
 Which explanation methods point to features that are genuinely used by LLM-generated-text detectors, as measured by causal interventions on the text?
 
+## Tech stack
+
+| Area | Choice | Why |
+|---|---|---|
+| Language & environment | Python ≥ 3.10, dependencies managed with **uv** | Fast, reproducible environments |
+| Code quality | **ruff** (lint + format) | One tool for linting and formatting |
+| Version control | Git + GitHub, **Conventional Commits** | Readable history, easy changelog |
+| CLI & automation | **typer** CLI (`main.py`) and a **justfile** for build / experiment automation | Reproducible one-command experiment runs |
+| Models & data | Hugging Face **Transformers** and **datasets** | RoBERTa detector, M4 corpus |
+| XAI | **shap** (Partition Explainer), **inseq** / Captum (Integrated Gradients) | Feature attribution |
+| Causal interventions | Custom module (`src/interventions`) for token deletion / replacement | Operators under our control (RQ2) |
+| Experiment tracking | **Weights & Biases** | Log faithfulness metrics and washing runs |
+| Configuration | YAML / JSON files (`configs/`) | Experiments defined by config, not code edits |
+
+## Quick start
+
+```bash
+uv sync            # install dependencies
+just               # list recipes (data, train, explain, evaluate, washing, test, lint)
+uv run python main.py --help
+```
+
 ## Planned outputs
 
 - A **benchmark** for causal validation of explanations of LLM text detectors
