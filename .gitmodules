@@ -1,0 +1,6 @@
+[submodule "external/M4"]
+	path = external/M4
+	url = https://github.com/mbzuai-nlp/M4.git
+[submodule "external/fast-detect-gpt"]
+	path = external/fast-detect-gpt
+	url = https://github.com/baoguangsheng/fast-detect-gpt.git

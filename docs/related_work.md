@@ -1,64 +1,6 @@
-# Causal validation of explanations of LLM-generated text detectors: simplified plan and related work
+# Literature Review
 
-## Conclusions
-
-Core idea: check whether tokens highlighted by explanation methods really drive a detector's decision (causal interventions), and whether explanations can change while the decision mechanism does not (explanation washing).
-
-### 1. Research questions
-
-Based on the literature review we choose the following details of our research:
-1. **Research questions:**
-	1. **RQ1 (Faithfulness baseline)**. When we remove the tokens that an explanation method says are most important, does the detector's decision change as predicted? We test this with standard measures (comprehensiveness, sufficiency, deletion-flip curves) and compare our results with what earlier studies found for text classifiers in general.
-	2. **RQ2 (Operator dependence)**. Does the answer depend on how we remove or change a token: deleting it, replacing it with a realistic substitute, or paraphrasing the surrounding text?
-	3. **RQ3 (Explanation washing)**. Can we build a detector that makes the same decisions as the original one but gives different explanations, and can our causal tests tell these two detectors apart?
-
-### 2. Detectors
-
-| Detector | Type | Why |
-|---|---|---|
-| **RoBERTa-base fine-tuned on M4** | Supervised, white-box | Main detector. Full gradient access, so all explanation methods apply; standard baseline in M4GT-Bench; also the model we manipulate for washing (RQ3). Low cost (~125M params, one 12-16 GB GPU). |
-| **Fast-DetectGPT** | Zero-shot, probability curvature | Comparison from a different detector family. Score is a sum of per-token values, so it has built-in evidence to compare with attributions. Needs a scoring LLM (GPT-Neo 2.7B / GPT-J 6B), one 16-24 GB GPU. |
-
-### 3. Explanation methods
-
-| Method | Type | Why |
-|---|---|---|
-| **SHAP** (Partition Explainer) | Perturbation-based, black-box | Best method for MGT detectors in Schoenegger et al. (2024); signed attributions allow tests in both directions. Needs a reference value (a choice to ablate). |
-| **Integrated Gradients** | Gradient-based, white-box (RoBERTa only) | Different mechanism from SHAP, so (dis)agreement is informative. Needs a baseline (e.g. pad/mask embedding). |
-| **Random attribution** | Control | Null for deletion curves; draw 5-10 random vectors per text for confidence intervals. |
-
-Occlusion (leave-one-out) is dropped: it uses the same operator as the deletion test, so its faithfulness is inflated by construction.
-
-### 4. Interventions
-
-- **Deletion / masking** of the top-K tokens.
-- **Replacement** with a realistic substitute (synonym or masked-LM suggestion).
-
-### 5. Washing experiment (RQ3)
-
-Following adversarial model manipulation (Heo et al. 2019) and the theory of Anders et al. (2020), fine-tune a copy of RoBERTa with a loss made of two parts: (1) output agreement with the original (e.g. KL on logits), (2) a penalty that pushes attributions elsewhere (e.g. IG mass onto punctuation/stopwords). Then check: are predictions still (almost) identical, did explanations change, and do comprehensiveness/sufficiency expose the new explanations as non-causal?
-
-### 6. Dataset
-
-**M4 (English subset only)**, a few thousand texts, split train / val / test (e.g. 70 / 15 / 15) for fine-tuning RoBERTa and running the interventions.
-
-### 7. Metrics
-
-- **Detector sanity check:** Macro-F1, AUROC.
-- **Causal faithfulness:** comprehensiveness, sufficiency (top-K tokens removed / kept; definitions from ERASER, DeYoung et al. 2020), deletion curve and its AUC, always against the random baseline.
-
-### 8. Order of work
-
-1. RoBERTa + SHAP / IG / random + deletion (basic RQ1).
-2. Add replacement operator (operator comparison, RQ2).
-3. Washing on RoBERTa (RQ3).
-4. Optional: Fast-DetectGPT, paraphrase, ground truth from Task 3.
-
----
-
-## Literature Review
-
-### Sections
+## Sections
 * **Section 1:** evaluations of explainability techniques/methods.
 * **Section 2:** AIGT detection landscape
 	* **Section 2.1:** surveys/reviews
