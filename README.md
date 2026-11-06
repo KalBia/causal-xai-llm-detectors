@@ -45,9 +45,9 @@ uv run python main.py --help
 
 ## Deliverables (per SIWY regulations)
 
-- [ + ] Design proposal (schedule by dates, bibliography, planned experiments, tech stack)
-- [ + ] Documented literature analysis (annotated table of related papers)
-- [ + ] Functional prototype demonstration
+- [x] Design proposal (schedule by dates, bibliography, planned experiments, tech stack)
+- [x] Documented literature analysis (annotated table of related papers)
+- [x] Functional prototype demonstration
 - [ ] Documentation, usage instructions, and tests
 - [ ] 3–5 minute summary video
 - [ ] Scientific article describing the project and results
