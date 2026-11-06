@@ -1,0 +1,25 @@
+seed: 42
+data:
+  name: M4
+  language: en
+  max_samples: 5000
+  split: {train: 0.70, val: 0.15, test: 0.15}
+  dir: data/
+detector:
+  name: roberta-base
+  max_length: 512
+  epochs: 3
+  batch_size: 16
+  lr: 2.0e-5
+  checkpoint_dir: checkpoints/roberta_m4
+explainers: [shap, integrated_gradients, random]
+random_explainer: {n_draws: 10}
+interventions: [deletion, replacement]
+top_k: [1, 5, 10, 20]       # tokens to intervene on
+washing:
+  lambda_expl: 1.0          # weight of explanation penalty
+  target_tokens: punctuation_stopwords
+output_dir: results/
+tracking:
+  enabled: false            # true for logging faithfulness metrics / washing runs to W&B
+  project: siwy-xai
