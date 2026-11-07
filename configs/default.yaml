@@ -2,9 +2,29 @@ seed: 42
 data:
   name: M4
   language: en
-  max_samples: 5000
+  raw_dir: external/M4/data 
+  dir: data/  
+  # --- load ---
+  domain: [wikipedia, reddit, wikihow, arxiv] 
+  excluded_models: [bloomz] 
+  human_text_keys: [human_text, text, abstract]
+  machine_text_key: machine_text
+  model_families:
+    cohere: cohere
+    command: cohere
+    dolly: dolly
+    flan: flan-t5
+    gpt-3.5: chatgpt
+    chatgpt: chatgpt
+    text-davinci: davinci
+    davinci: davinci
+  # --- preprocess ---
+  strip_leading_regex: '^[;,\s]+' 
+  prompt_prefixes: ["Write", "Please write", "I will ask you"]
+  min_words: 50 
+  max_samples: 10000 
+  # --- split ---
   split: {train: 0.70, val: 0.15, test: 0.15}
-  dir: data/
 detector:
   name: roberta-base
   max_length: 512
@@ -15,7 +35,7 @@ detector:
 explainers: [shap, integrated_gradients, random]
 random_explainer: {n_draws: 10}
 interventions: [deletion, replacement]
-top_k: [1, 5, 10, 20]       # tokens to intervene on
+top_k: [1, 5, 10, 20] 
 washing:
   lambda_expl: 1.0          # weight of explanation penalty
   target_tokens: punctuation_stopwords
