@@ -31,7 +31,7 @@ Which explanation methods point to features that are genuinely used by LLM-gener
 ```bash
 uv sync                # install dependencies for dry-run mode
 just submodules        # fetch external/M4 and external/fast-detect-gpt
-just pipeline          # whole pipeline end to end (skeleton, prints only)
+just pipeline          # whole pipeline of thw project (for now only skeleton with prints: development in the process..)
 just                   # list recipes (data, train, eval-detector, explain, evaluate, washing, test, lint)
 uv run python main.py --help
 ```
