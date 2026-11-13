@@ -16,3 +16,15 @@ Plans for this week:
   * Add detectors to repository.
   * Add datasets to repository.
   * Set up explanation methods in repository.
+
+## Weekly: 13.11.2026
+Done:
+  * Made the skeleton of the project pipeline.
+  * Added the data module with an external M4 submodule.
+
+Delayed:
+  * Add detectors to the repository.
+  * Set up explanation methods in the repository.
+
+Plans for this week:
+  * Start detector fine-tuning.
