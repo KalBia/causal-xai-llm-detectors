@@ -29,7 +29,7 @@ Delayed:
 Plans for this week:
   * Start detector fine-tuning.
 
-## Weekly: 22.11.2026
+## Weekly: 20.11.2026
 Done:
  * Added detectors to the repository.
  * Updated `test_pipeline.py`.
@@ -39,5 +39,6 @@ Delayed:
 * Set up explanation methods in the repository (dependent on detector readiness/training).
 
 Plans for this week:
-* Continue detector fine-tuning and set up explanation methods in the repository.
-
+* Continue detector fine-tuning
+* Set up explanation methods in the repository.
+* Verify that pipeline works so far.
