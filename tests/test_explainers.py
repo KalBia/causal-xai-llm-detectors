@@ -149,8 +149,18 @@ class TinyWhiteBoxDetector:
 
 
 def test_ig_requires_whitebox():
+    class NotLoaded:
+        name = "not-loaded"
+        tokenizer = None
+        model = None
+
+        def predict_proba(self, texts):
+            return [0.5] * len(texts)
+
     with pytest.raises(TypeError, match="white-box"):
         IntegratedGradientsExplainer(KeywordDetector())  # black-box dummy from the SHAP tests
+    with pytest.raises(TypeError, match="white-box"):
+        IntegratedGradientsExplainer(NotLoaded())  # protocol attrs present, but model not loaded
 
 
 def test_ig_completeness_and_word_level():

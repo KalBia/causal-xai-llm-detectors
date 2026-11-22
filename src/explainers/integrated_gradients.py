@@ -24,8 +24,8 @@ class IntegratedGradientsExplainer(Explainer):
 
     name = "integrated_gradients"
 
-    def __init__(self, detector, n_steps: int = 50, baseline: str = "pad"):
-        if not isinstance(detector, WhiteBoxDetector):
+    def __init__(self, detector, n_steps: int = 50, baseline: str = "pad", max_length: int = 512):
+        if not isinstance(detector, WhiteBoxDetector) or detector.model is None:
             raise TypeError(
                 "integrated_gradients requires a white-box detector (e.g. RoBERTa), "
                 f"got {type(detector).__name__}"
@@ -36,7 +36,12 @@ class IntegratedGradientsExplainer(Explainer):
 
         self.detector = detector
         self.n_steps = n_steps
+        self.max_length = max_length
         self._lig = LayerIntegratedGradients(self._forward, detector.model.get_input_embeddings())
+
+    @property
+    def _device(self):
+        return getattr(self.detector, "device", None) or next(self.detector.model.parameters()).device
 
     def _forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
         outputs = self.detector.model(input_ids=input_ids, attention_mask=attention_mask)
@@ -45,9 +50,10 @@ class IntegratedGradientsExplainer(Explainer):
 
     def explain(self, text: str) -> tuple[list[str], NDArray[np.float64]]:
         tokenizer = self.detector.tokenizer
-        enc = tokenizer(text, return_tensors="pt", return_offsets_mapping=True)
-        input_ids = enc["input_ids"].to(self.detector.device)
-        attention_mask = enc["attention_mask"].to(self.detector.device)
+        enc = tokenizer(text, return_tensors="pt", return_offsets_mapping=True, truncation=True,
+            max_length=self.max_length)
+        input_ids = enc["input_ids"].to(self._device)
+        attention_mask = enc["attention_mask"].to(self._device)
         offsets = enc["offset_mapping"][0].tolist()
         baseline_ids = torch.full_like(input_ids, tokenizer.pad_token_id)
         attrs = self._lig.attribute(

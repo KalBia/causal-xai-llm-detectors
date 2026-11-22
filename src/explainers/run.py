@@ -34,9 +34,16 @@ def run_explain(cfg: dict, detector) -> None:
     explain_cfg = cfg.get("explain", {})
     split = explain_cfg.get("split", "test")
     out_dir = Path(explain_cfg.get("output_dir", "results/explain"))
-
     texts = _load_texts(cfg)
+
     explainers = build_explainers(cfg, detector)
+    if getattr(detector, "model", None) is None and hasattr(detector, "load"):
+        try:
+            detector.load()
+            print("[explain] loaded detector checkpoint")
+        except Exception as e:
+            print(f"[explain] checkpoint not loadable ({e}); white-box explainers will be skipped")
+
     for name, explainer in explainers.items():
         out_path = out_dir / name / f"{split}.jsonl"
         out_path.parent.mkdir(parents=True, exist_ok=True)

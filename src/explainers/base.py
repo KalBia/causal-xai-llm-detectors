@@ -37,6 +37,5 @@ class WhiteBoxDetector(Protocol):
     name: str
     tokenizer: object # Hugging Face tokenizer
     model: object
-    device: str
 
     def predict_proba(self, texts: list[str]) -> list[float]: ...
