@@ -8,7 +8,7 @@ from .shap_explainer import ShapExplainer
 
 def build_explainers(cfg: dict, detector, names: list[str] | None = None) -> dict[str, Explainer]:
     avail = {
-        "shap": lambda: ShapExplainer(detector),
+        "shap": lambda: ShapExplainer(detector, **cfg.get("shap", {})),
         "integrated_gradients": lambda: IntegratedGradientsExplainer(detector),
         "random": lambda: RandomExplainer(cfg["random_explainer"]["n_draws"], cfg.get("seed", 17)),
     }

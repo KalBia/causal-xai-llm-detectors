@@ -1,8 +1,11 @@
+import math
+
 import numpy as np
 
 from src.explainers import build_explainers
 from src.explainers.base import WhiteBoxDetector
 from src.explainers.random_baseline import RandomExplainer
+from src.explainers.shap_explainer import ShapExplainer
 
 
 def test_random_contract_and_determinism():
@@ -48,3 +51,31 @@ def test_whitebox_protocol():
     assert isinstance(DummyWhiteBox(), WhiteBoxDetector)
     assert not isinstance(object(), WhiteBoxDetector)
     assert not isinstance(RandomExplainer(), WhiteBoxDetector)
+
+
+class KeywordDetector:
+    """Black-box dummy: P(AI) = sigmoid(count of 'great')."""
+
+    name = "keyword-dummy"
+
+    def predict_proba(self, texts):
+        return [1.0 / (1.0 + math.exp(-text.lower().count("great"))) for text in texts]
+
+
+def test_shap_word_level_and_additivity():
+    det = KeywordDetector()
+    exp = ShapExplainer(det, mask_token="[MASK]", max_evals=200)
+    text = "this is great stuff today"  # 5 words -> 2^5 subsets, exact within max_evals
+    tokens, values = exp.explain(text)
+    assert tokens == text.split()
+    assert values.shape == (5,)
+    f_full = det.predict_proba([text])[0]
+    f_all_masked = det.predict_proba(["[MASK]"])[0] # masker collapses consecutive masks to one [MASK]
+    # SHAP additivity: attributions sum to f(x) - f(baseline)
+    np.testing.assert_allclose(values.sum(), f_full - f_all_masked, atol=1e-6)
+
+
+def test_shap_sign_convention():
+    exp = ShapExplainer(KeywordDetector(), max_evals=200)
+    tokens, values = exp.explain("this is great stuff today")
+    assert values[tokens.index("great")] > 0  # the positive keyword gets positive attribution
