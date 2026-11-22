@@ -93,24 +93,33 @@ def test_shap_sign_convention():
 
 
 class _TinyTokenizer:
-    """Whitespace tokenizer with the HF-subset API the IG explainer uses."""
+    """Whitespace tokenizer with the HF-subset API the IG explainer uses.
+
+    With subwords=True each word is split into two pieces (like BPE), to exercise
+    the subword->word aggregation in IntegratedGradientsExplainer.
+    """
 
     pad_token_id = 0
 
-    def __init__(self):
+    def __init__(self, subwords: bool = False):
         self.vocab = {"<pad>": 0}
+        self.subwords = subwords
 
     def __call__(self, text, return_tensors=None, return_offsets_mapping=False, **kwargs):
-        tokens = text.split()
         ids, spans = [], []
         pos = 0
-        for tok in tokens:
-            start = text.index(tok, pos)
-            spans.append((start, start + len(tok)))
-            pos = start + len(tok)
-            if tok not in self.vocab:
-                self.vocab[tok] = len(self.vocab)
-            ids.append(self.vocab[tok])
+        for word in text.split():
+            start = text.index(word, pos)
+            end = start + len(word)
+            pos = end
+            mid = start + max(1, len(word) // 2)
+            pieces = [(start, mid), (mid, end)] if self.subwords else [(start, end)]
+            for s, e in pieces:
+                piece = text[s:e]
+                if piece not in self.vocab:
+                    self.vocab[piece] = len(self.vocab)
+                ids.append(self.vocab[piece])
+                spans.append((s, e))
         result = {"input_ids": ids, "attention_mask": [1] * len(ids)}
         if return_offsets_mapping:
             result["offset_mapping"] = spans
@@ -136,9 +145,9 @@ class TinyWhiteBoxDetector:
     name = "tiny"
     device = "cpu"
 
-    def __init__(self):
+    def __init__(self, tokenizer=None):
         torch.manual_seed(0)
-        self.tokenizer = _TinyTokenizer()
+        self.tokenizer = tokenizer or _TinyTokenizer()
         self.model = _TinyModel()
 
     def predict_proba(self, texts):
@@ -172,6 +181,22 @@ def test_ig_completeness_and_word_level():
     assert attrs.shape == (5,)
     # IG completeness: attributions sum to f(x) - f(baseline); the tiny model is
     # linear in the embeddings, so the n_steps approximation is exact
+    enc = det.tokenizer(text, return_tensors="pt")
+    with torch.no_grad():
+        f_x = det.model(input_ids=enc["input_ids"], attention_mask=enc["attention_mask"]).logits[0, 1].item()
+        f_base = det.model(input_ids=torch.zeros_like(enc["input_ids"]),
+            attention_mask=enc["attention_mask"]).logits[0, 1].item()
+    np.testing.assert_allclose(attrs.sum(), f_x - f_base, atol=1e-4)
+
+
+def test_ig_aggregates_subwords_to_words():
+    det = TinyWhiteBoxDetector(tokenizer=_TinyTokenizer(subwords=True))
+    exp = IntegratedGradientsExplainer(det, n_steps=32)
+    text = "this is great stuff today"
+    words, attrs = exp.explain(text)
+    assert words == text.split()
+    assert attrs.shape == (5,)  # one attribution per WORD, not per subword
+    # completeness survives aggregation: sum over words == f(x) - f(pad baseline)
     enc = det.tokenizer(text, return_tensors="pt")
     with torch.no_grad():
         f_x = det.model(input_ids=enc["input_ids"], attention_mask=enc["attention_mask"]).logits[0, 1].item()
