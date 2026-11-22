@@ -10,6 +10,6 @@ def build_explainers(cfg: dict, detector, names: list[str] | None = None) -> dic
     avail = {
         "shap": lambda: ShapExplainer(detector),
         "integrated_gradients": lambda: IntegratedGradientsExplainer(detector),
-        "random": lambda: RandomExplainer(cfg["random_explainer"]["n_draws"]),
+        "random": lambda: RandomExplainer(cfg["random_explainer"]["n_draws"], cfg.get("seed", 17)),
     }
     return {n: avail[n]() for n in names or cfg["explainers"]}
