@@ -1,6 +1,7 @@
 import numpy as np
 
 from src.explainers import build_explainers
+from src.explainers.base import WhiteBoxDetector
 from src.explainers.random_baseline import RandomExplainer
 
 
@@ -32,3 +33,18 @@ def test_factory_uses_config():
     explainers = build_explainers(cfg, detector=None)  # only "random" is constructed
     assert set(explainers) == {"random"}
     assert len(explainers["random"].explain_draws("x y")) == 3
+
+
+def test_whitebox_protocol():
+    class DummyWhiteBox:
+        name = "dummy"
+        tokenizer = object()
+        model = object()
+        device = "cpu"
+
+        def predict_proba(self, texts):
+            return [0.5] * len(texts)
+
+    assert isinstance(DummyWhiteBox(), WhiteBoxDetector)
+    assert not isinstance(object(), WhiteBoxDetector)
+    assert not isinstance(RandomExplainer(), WhiteBoxDetector)
