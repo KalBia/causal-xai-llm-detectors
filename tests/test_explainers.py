@@ -1,11 +1,21 @@
 import math
+from types import SimpleNamespace
 
 import numpy as np
+import pytest
+import torch
 
 from src.explainers import build_explainers
 from src.explainers.base import WhiteBoxDetector
+from src.explainers.integrated_gradients import IntegratedGradientsExplainer
 from src.explainers.random_baseline import RandomExplainer
 from src.explainers.shap_explainer import ShapExplainer
+
+
+def test_factory_skips_ig_for_blackbox_detector():
+    cfg = {"explainers": ["shap", "integrated_gradients", "random"], "random_explainer": {"n_draws": 2}, "seed": 1}
+    explainers = build_explainers(cfg, detector=KeywordDetector())
+    assert set(explainers) == {"shap", "random"}
 
 
 def test_random_contract_and_determinism():
@@ -79,3 +89,81 @@ def test_shap_sign_convention():
     exp = ShapExplainer(KeywordDetector(), max_evals=200)
     tokens, values = exp.explain("this is great stuff today")
     assert values[tokens.index("great")] > 0  # the positive keyword gets positive attribution
+
+
+class _TinyTokenizer:
+    """Whitespace tokenizer with the HF-subset API the IG explainer uses."""
+
+    pad_token_id = 0
+
+    def __init__(self):
+        self.vocab = {"<pad>": 0}
+
+    def __call__(self, text, return_tensors=None, return_offsets_mapping=False, **kwargs):
+        tokens = text.split()
+        ids, spans = [], []
+        pos = 0
+        for tok in tokens:
+            start = text.index(tok, pos)
+            spans.append((start, start + len(tok)))
+            pos = start + len(tok)
+            if tok not in self.vocab:
+                self.vocab[tok] = len(self.vocab)
+            ids.append(self.vocab[tok])
+        result = {"input_ids": ids, "attention_mask": [1] * len(ids)}
+        if return_offsets_mapping:
+            result["offset_mapping"] = spans
+        if return_tensors == "pt":
+            result = {k: torch.tensor([v]) for k, v in result.items()}
+        return result
+
+
+class _TinyModel(torch.nn.Module):
+    def __init__(self, vocab_size=64, dim=8):
+        super().__init__()
+        self.emb = torch.nn.Embedding(vocab_size, dim, padding_idx=0)
+        self.head = torch.nn.Linear(dim, 2)
+
+    def get_input_embeddings(self):
+        return self.emb
+
+    def forward(self, input_ids, attention_mask=None):
+        return SimpleNamespace(logits=self.head(self.emb(input_ids).mean(dim=1)))
+
+
+class TinyWhiteBoxDetector:
+    name = "tiny"
+    device = "cpu"
+
+    def __init__(self):
+        torch.manual_seed(0)
+        self.tokenizer = _TinyTokenizer()
+        self.model = _TinyModel()
+
+    def predict_proba(self, texts):
+        with torch.no_grad():
+            ids = torch.tensor([[self.tokenizer.vocab.get(t, 0) for t in x.split()] for x in texts])
+            logits = self.model(input_ids=ids).logits
+        return torch.softmax(logits, dim=-1)[:, 1].tolist()
+
+
+def test_ig_requires_whitebox():
+    with pytest.raises(TypeError, match="white-box"):
+        IntegratedGradientsExplainer(KeywordDetector())  # black-box dummy from the SHAP tests
+
+
+def test_ig_completeness_and_word_level():
+    det = TinyWhiteBoxDetector()
+    exp = IntegratedGradientsExplainer(det, n_steps=32)
+    text = "this is great stuff today"
+    words, attrs = exp.explain(text)
+    assert words == text.split()
+    assert attrs.shape == (5,)
+    # IG completeness: attributions sum to f(x) - f(baseline); the tiny model is
+    # linear in the embeddings, so the n_steps approximation is exact
+    enc = det.tokenizer(text, return_tensors="pt")
+    with torch.no_grad():
+        f_x = det.model(input_ids=enc["input_ids"], attention_mask=enc["attention_mask"]).logits[0, 1].item()
+        f_base = det.model(input_ids=torch.zeros_like(enc["input_ids"]),
+            attention_mask=enc["attention_mask"]).logits[0, 1].item()
+    np.testing.assert_allclose(attrs.sum(), f_x - f_base, atol=1e-4)
