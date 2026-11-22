@@ -1,3 +1,4 @@
+import json
 import math
 from types import SimpleNamespace
 
@@ -167,3 +168,41 @@ def test_ig_completeness_and_word_level():
         f_base = det.model(input_ids=torch.zeros_like(enc["input_ids"]),
             attention_mask=enc["attention_mask"]).logits[0, 1].item()
     np.testing.assert_allclose(attrs.sum(), f_x - f_base, atol=1e-4)
+
+
+def test_run_explain_dry_run_writes_jsonl(tmp_path):
+    from src.explainers.run import run_explain
+
+    cfg = {
+        "data": {"dir": str(tmp_path / "data")},  # missing -> dry-run fallback
+        "explainers": ["random"],
+        "random_explainer": {"n_draws": 3},
+        "seed": 1,
+        "explain": {"split": "test", "n_samples": 10, "output_dir": str(tmp_path / "out")},
+    }
+    run_explain(cfg, detector=None)
+    lines = (tmp_path / "out" / "random" / "test.jsonl").read_text().splitlines()
+    assert len(lines) == 1  # one dry-run sample text
+    rec = json.loads(lines[0])
+    assert rec["tokens"] == "example text to explain".split()
+    assert len(rec["attributions"]) == len(rec["tokens"])
+    assert len(rec["draws"]) == 3  # random overrides explain_draws -> draws stored
+
+
+def test_run_explain_loads_split_and_caps_n_samples(tmp_path):
+    from src.explainers.run import run_explain
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "test.jsonl").write_text('{"text": "hello world foo"}\n{"text": "another sample text"}\n')
+    cfg = {
+        "data": {"dir": str(data_dir)},
+        "explainers": ["random"],
+        "random_explainer": {"n_draws": 2},
+        "seed": 1,
+        "explain": {"split": "test", "n_samples": 1, "output_dir": str(tmp_path / "out")},
+    }
+    run_explain(cfg, detector=None)
+    lines = (tmp_path / "out" / "random" / "test.jsonl").read_text().splitlines()
+    assert len(lines) == 1  # n_samples=1 caps the split
+    assert json.loads(lines[0])["text"] == "hello world foo"
