@@ -45,6 +45,8 @@ We also study **explanation washing** — situations where explanations change e
 
 Occlusion (leave-one-out) is dropped: it uses the same operator as the deletion test, so its faithfulness is inflated by construction.
 
+Implemented in `src/explainers/`: word-level signed attributions (positive = evidence for AI-generated), plus a multi-draw API (`explain_draws`) for the random null. `just explain` computes attributions on the test split and saves them per explainer to `results/explain/<explainer>/<split>.jsonl` (needs the trained detector checkpoint).
+
 ### Interventions
 
 - **Deletion / masking** of the top-K tokens.
@@ -84,7 +86,7 @@ Following adversarial model manipulation (Heo et al. 2019) and the theory of And
 ```bash
 uv sync                # install dependencies for dry-run mode
 just submodules        # fetch external/M4 and external/fast-detect-gpt
-just pipeline          # whole pipeline of thw project (for now only skeleton with prints: development in the process..)
+just pipeline          # whole pipeline end to end (datasets, detectors and explainers implemented; interventions/evaluation/experiments in progress)
 just                   # list recipes (data, train, eval-detector, explain, evaluate, washing, test, lint)
 uv run python main.py --help
 ```
