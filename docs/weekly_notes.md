@@ -42,3 +42,20 @@ Plans for this week:
 * Continue detector fine-tuning
 * Set up explanation methods in the repository.
 * Verify that pipeline works so far.
+
+## Weekly: 27.11.2026
+
+Done:
+* Implemented explanation methods in the repository (SHAP Partition explainer, Integrated Gradients via Captum, and random baseline with seeded draws) with unit tests.
+* Added WhiteBoxDetector protocol for gradient-based explainers and aligned it with RobertaDetector.
+* Added functional run.py with tests, improved explainer test coverage, and added documentation (README + src/README).
+* Merged explainers module and explain stage into main.
+  
+Delayed:
+* Full detector fine-tuning on local GPU.
+* Causal validation mechanism (perturbation scripts for token ablation and synonymization, unit tests and metrics).
+
+Plans for this week:
+* Finish full detector fine-tuning on local GPU.
+* Implement perturbation scripts (token ablation and synonymization), unit tests, and faithfulness evaluation.
+* Add tests for experiments.
